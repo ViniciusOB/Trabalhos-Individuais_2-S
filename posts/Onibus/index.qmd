@@ -1,0 +1,128 @@
+---
+title: "Monitoramento de Frota de Ônibus"
+author: "Vinicius"
+date: "2025-11-05"
+categories: [python, onibus, monitoramento]
+image: "onibus.jpg"
+---
+
+No primeiro exercício foi desenvolvida uma aplicação em Python que se conecta à API Olho Vivo, da SPTrans, para obter informações em tempo real sobre uma linha de ônibus específica.
+O programa realiza etapas fundamentais de interação com APIs:
+
+Autenticação com token fornecido pela SPTrans.
+
+Busca da linha informada pelo usuário.
+
+Coleta do itinerário, das paradas e da posição atual dos veículos.
+
+Exibição dos dados em um mapa, usando a biblioteca Folium, que permite representar trajetos, paradas e ônibus em tempo real.
+
+```
+import os
+import requests
+from dotenv import load_dotenv
+import folium
+import webbrowser
+
+load_dotenv(".env")
+TOKEN = os.getenv("ONIBUS_TOKEN")
+API = "http://api.olhovivo.sptrans.com.br/v2.1"
+
+linha_usuario = "2506"
+
+s = requests.Session()
+res = s.post(f"{API}/Login/Autenticar?token={TOKEN}")
+print("Autenticação:", res.text)
+
+def buscar_codigos(entrada):
+    termo = entrada.split("-")[0]
+    r = s.get(f"{API}/Linha/Buscar?termosBusca={termo}")
+    dados = r.json()
+    print("\nLinhas encontradas:")
+    for d in dados:
+        print(d)
+    return [d["cl"] for d in dados]
+
+def buscar_itinerario(cod):
+    r = s.get(f"{API}/Itinerario?codigoLinha={cod}")
+    data = r.json()
+    traj = [[v["py"], v["px"]] for k, v in data.items() if k.isdigit()]
+    par = [{"nome": v["np"], "lat": v["py"], "lng": v["px"]} for k, v in data.items() if k.startswith("p")]
+    return traj, par
+
+def buscar_posicao(cod):
+    r = s.get(f"{API}/Posicao/Linha?codigoLinha={cod}")
+    return r.json().get("vs", [])
+
+todos_codigos = buscar_codigos(linha_usuario)
+
+melhor_trajeto = None
+melhor_paradas = None
+codigo_escolhido = None
+
+print("\nTestando códigos...\n")
+
+for cod in todos_codigos:
+    traj, par = buscar_itinerario(cod)
+    print(f"Código {cod} → Pontos: {len(traj)} / Paradas: {len(par)}")
+    if len(traj) > 0:
+        melhor_trajeto = traj
+        melhor_paradas = par
+        codigo_escolhido = cod
+        break
+
+if melhor_trajeto is None:
+    print("\nNenhum itinerário com trajeto. Testando paradas.\n")
+    for cod in todos_codigos:
+        r = s.get(f"{API}/Parada/BuscarParadasPorLinha?codigoLinha={cod}")
+        par = r.json()
+        if len(par) > 0:
+            melhor_paradas = [{"nome": p["np"], "lat": p["py"], "lng": p["px"]} for p in par]
+            melhor_trajeto = []
+            codigo_escolhido = cod
+            print(f"Usando paradas do código {cod}")
+            break
+
+if melhor_paradas is None and melhor_trajeto is None:
+    raise Exception("API sem dados para essa linha.")
+
+veiculos = buscar_posicao(codigo_escolhido)
+print(f"\nVeículos encontrados: {len(veiculos)}")
+
+if melhor_trajeto:
+    lat0, lng0 = melhor_trajeto[0]
+else:
+    lat0, lng0 = melhor_paradas[0]["lat"], melhor_paradas[0]["lng"]
+
+m = folium.Map(location=[lat0, lng0], zoom_start=13)
+
+if melhor_trajeto:
+    folium.PolyLine(melhor_trajeto, weight=4, color="blue").add_to(m)
+
+for p in melhor_paradas:
+    folium.Marker(
+        [p["lat"], p["lng"]],
+        popup=p["nome"],
+        icon=folium.Icon(color="green")
+    ).add_to(m)
+
+for v in veiculos:
+    folium.Marker(
+        [v["py"], v["px"]],
+        popup=f"Prefixo: {v['p']}",
+        icon=folium.Icon(color="red")
+    ).add_to(m)
+
+m.save("onibus_mapa.html")
+webbrowser.open("onibus_mapa.html")
+
+print("\nMapa gerado: onibus_mapa.html")
+
+
+```
+
+<center>
+```{=html}
+<iframe width="700" height="350" src="onibus_mapa.html"></iframe>
+```
+</center>

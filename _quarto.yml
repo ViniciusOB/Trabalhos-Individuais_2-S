@@ -1,0 +1,23 @@
+project:
+  type: website
+  output-dir: docs   
+
+website:
+  description: "A blog built with Quarto"
+  site-url: https://github.com/ViniciusOB/Trabalhos-Individuais_2-S
+  title: "TrabalhoBlog"
+
+  navbar:
+    right:
+      - about.qmd
+      - icon: github
+        href: https://github.com/
+      - icon: twitter
+        href: https://twitter.com
+
+format:
+  html:
+    theme:
+      - cosmo
+      - brand
+    css: styles.css

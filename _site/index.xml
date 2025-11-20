@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss  xmlns:atom="http://www.w3.org/2005/Atom" 
+      xmlns:media="http://search.yahoo.com/mrss/" 
+      xmlns:content="http://purl.org/rss/1.0/modules/content/" 
+      xmlns:dc="http://purl.org/dc/elements/1.1/" 
+      version="2.0">
+<channel>
+<title>TrabalhoBlog</title>
+<link>https://your-website-url.example.com/</link>
+<atom:link href="https://your-website-url.example.com/index.xml" rel="self" type="application/rss+xml"/>
+<description>A blog built with Quarto</description>
+<generator>quarto-1.8.25</generator>
+<lastBuildDate>Wed, 05 Nov 2025 03:00:00 GMT</lastBuildDate>
+<item>
+  <title>Cotação do Dólar por Período</title>
+  <dc:creator>Vinicius </dc:creator>
+  <link>https://your-website-url.example.com/posts/Dolar/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>O primeiro exercício trabalha entradas de dados e operações matemáticas básicas. O programa pede ao usuário o preço do dólar no dia e, em seguida, converte um valor em reais para dólares. É um ótimo exemplo prático de como utilizar variáveis, leitura de dados e cálculos simples no Python.</p>
+<pre><code>import requests
+import pandas as pd
+import calendar
+from datetime import datetime
+import plotly.express as px
+import plotly.io as pio
+
+pio.renderers.default = "browser"
+
+
+def cotacao_dolar_mes(mmyyyy: str):
+
+    first_date = datetime.strptime(mmyyyy, "%m%Y")
+    last_day = calendar.monthrange(first_date.year, first_date.month)[1]
+    last_date = first_date.replace(day=last_day)
+
+
+    data_inicial = first_date.strftime("%m-%d-%Y")
+    data_final = last_date.strftime("%m-%d-%Y")
+
+
+    url = (
+        "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
+        f"CotacaoDolarPeriodo(dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?"
+        f"@dataInicial='{data_inicial}'&amp;"
+        f"@dataFinalCotacao='{data_final}'&amp;"
+        "$format=json"
+    )
+
+    resp = requests.get(url)
+    resp.raise_for_status()
+    items = resp.json().get("value", [])
+
+    if len(items) == 0:
+        print("A API não retornou cotações para esse período.")
+        df = pd.DataFrame(columns=["data", "cotacaoVenda"])
+    else:
+        df = pd.DataFrame(items)
+        df["data"] = pd.to_datetime(df["dataHoraCotacao"]).dt.normalize()
+        df = df.groupby("data", as_index=False)["cotacaoVenda"].mean()
+
+    todas_datas = pd.date_range(start=first_date, end=last_date)
+    df_completo = pd.DataFrame({"data": todas_datas})
+
+    
+    df_completo = df_completo.merge(df, on="data", how="left")
+    df_completo["cotacaoVenda"] = df_completo["cotacaoVenda"].ffill().bfill()
+
+    fig = px.line(
+        df_completo,
+        x="data",
+        y="cotacaoVenda",
+        title=f"Cotação do Dólar – {mmyyyy[:2]}/{mmyyyy[2:]}",
+        labels={"data": "Data", "cotacaoVenda": "Cotação (R$)"}
+    )
+
+    fig.write_html("grafico_dolar.html")
+
+    
+    fig.show()
+
+    return df_completo
+
+if __name__ == "__main__":
+    cotacao_dolar_mes("042017")
+</code></pre>
+<center>
+<iframe width="700" height="350" src="grafico_dolar.html"></iframe>
+</center>
+
+
+
+ ]]></description>
+  <category>python</category>
+  <category>dolar</category>
+  <category>cotacao</category>
+  <guid>https://your-website-url.example.com/posts/Dolar/</guid>
+  <pubDate>Wed, 05 Nov 2025 03:00:00 GMT</pubDate>
+  <media:content url="https://your-website-url.example.com/posts/Dolar/dolar.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Regressão linear</title>
+  <dc:creator>Vinicius </dc:creator>
+  <link>https://your-website-url.example.com/posts/Regressao/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>Exercício foi realizada uma regressão linear utilizando álgebra linear pura, sem depender de bibliotecas automáticas de machine learning. Foram fornecidos dois arquivos contendo anos de estudo (X) e salário (y), e o objetivo era estimar a relação entre essas variáveis por meio do modelo</p>
+<pre><code>import numpy as np
+import pandas as pd
+from plotnine import ggplot, aes, geom_point, geom_abline, ggsave
+
+arquivo = open("X.txt", "r")
+texto_X = []
+while True:
+    linha = arquivo.readline()
+    if not linha:
+        break
+    texto_X.append(linha.rstrip("\n"))
+arquivo.close()
+
+arquivo = open("y.txt", "r")
+texto_y = []
+while True:
+    linha = arquivo.readline()
+    if not linha:
+        break
+    texto_y.append(linha.rstrip("\n"))
+arquivo.close()
+
+X = np.array(list(map(float, texto_X)))
+y = np.array(list(map(float, texto_y)))
+
+X_mat = np.column_stack((np.ones(len(X)), X))
+y_mat = y.reshape(-1, 1)
+
+beta = np.linalg.inv(X_mat.T @ X_mat) @ (X_mat.T @ y_mat)
+
+a = beta[0][0]
+b = beta[1][0]
+
+df = pd.DataFrame({"x": X, "y": y})
+
+plot = (
+    ggplot(df, aes("x", "y"))
+    + geom_point()
+    + geom_abline(intercept=a, slope=b)
+)
+
+ggsave(plot, "grafico.png", dpi=300)
+
+print(a, b)
+</code></pre>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/Regressao/grafico.png" class="img-fluid figure-img"></p>
+<figcaption>grafico da regressão</figcaption>
+</figure>
+</div>
+
+
+
+ ]]></description>
+  <category>python</category>
+  <category>matematica</category>
+  <category>linear</category>
+  <guid>https://your-website-url.example.com/posts/Regressao/</guid>
+  <pubDate>Wed, 05 Nov 2025 03:00:00 GMT</pubDate>
+  <media:content url="https://your-website-url.example.com/posts/Regressao/regressao.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Monitoramento de Frota de Ônibus</title>
+  <dc:creator>Vinicius </dc:creator>
+  <link>https://your-website-url.example.com/posts/Onibus/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>No primeiro exercício foi desenvolvida uma aplicação em Python que se conecta à API Olho Vivo, da SPTrans, para obter informações em tempo real sobre uma linha de ônibus específica. O programa realiza etapas fundamentais de interação com APIs:</p>
+<p>Autenticação com token fornecido pela SPTrans.</p>
+<p>Busca da linha informada pelo usuário.</p>
+<p>Coleta do itinerário, das paradas e da posição atual dos veículos.</p>
+<p>Exibição dos dados em um mapa, usando a biblioteca Folium, que permite representar trajetos, paradas e ônibus em tempo real.</p>
+<pre><code>import os
+import requests
+from dotenv import load_dotenv
+import folium
+import webbrowser
+
+load_dotenv(".env")
+TOKEN = os.getenv("ONIBUS_TOKEN")
+API = "http://api.olhovivo.sptrans.com.br/v2.1"
+
+linha_usuario = "2506"
+
+s = requests.Session()
+res = s.post(f"{API}/Login/Autenticar?token={TOKEN}")
+print("Autenticação:", res.text)
+
+def buscar_codigos(entrada):
+    termo = entrada.split("-")[0]
+    r = s.get(f"{API}/Linha/Buscar?termosBusca={termo}")
+    dados = r.json()
+    print("\nLinhas encontradas:")
+    for d in dados:
+        print(d)
+    return [d["cl"] for d in dados]
+
+def buscar_itinerario(cod):
+    r = s.get(f"{API}/Itinerario?codigoLinha={cod}")
+    data = r.json()
+    traj = [[v["py"], v["px"]] for k, v in data.items() if k.isdigit()]
+    par = [{"nome": v["np"], "lat": v["py"], "lng": v["px"]} for k, v in data.items() if k.startswith("p")]
+    return traj, par
+
+def buscar_posicao(cod):
+    r = s.get(f"{API}/Posicao/Linha?codigoLinha={cod}")
+    return r.json().get("vs", [])
+
+todos_codigos = buscar_codigos(linha_usuario)
+
+melhor_trajeto = None
+melhor_paradas = None
+codigo_escolhido = None
+
+print("\nTestando códigos...\n")
+
+for cod in todos_codigos:
+    traj, par = buscar_itinerario(cod)
+    print(f"Código {cod} → Pontos: {len(traj)} / Paradas: {len(par)}")
+    if len(traj) &gt; 0:
+        melhor_trajeto = traj
+        melhor_paradas = par
+        codigo_escolhido = cod
+        break
+
+if melhor_trajeto is None:
+    print("\nNenhum itinerário com trajeto. Testando paradas.\n")
+    for cod in todos_codigos:
+        r = s.get(f"{API}/Parada/BuscarParadasPorLinha?codigoLinha={cod}")
+        par = r.json()
+        if len(par) &gt; 0:
+            melhor_paradas = [{"nome": p["np"], "lat": p["py"], "lng": p["px"]} for p in par]
+            melhor_trajeto = []
+            codigo_escolhido = cod
+            print(f"Usando paradas do código {cod}")
+            break
+
+if melhor_paradas is None and melhor_trajeto is None:
+    raise Exception("API sem dados para essa linha.")
+
+veiculos = buscar_posicao(codigo_escolhido)
+print(f"\nVeículos encontrados: {len(veiculos)}")
+
+if melhor_trajeto:
+    lat0, lng0 = melhor_trajeto[0]
+else:
+    lat0, lng0 = melhor_paradas[0]["lat"], melhor_paradas[0]["lng"]
+
+m = folium.Map(location=[lat0, lng0], zoom_start=13)
+
+if melhor_trajeto:
+    folium.PolyLine(melhor_trajeto, weight=4, color="blue").add_to(m)
+
+for p in melhor_paradas:
+    folium.Marker(
+        [p["lat"], p["lng"]],
+        popup=p["nome"],
+        icon=folium.Icon(color="green")
+    ).add_to(m)
+
+for v in veiculos:
+    folium.Marker(
+        [v["py"], v["px"]],
+        popup=f"Prefixo: {v['p']}",
+        icon=folium.Icon(color="red")
+    ).add_to(m)
+
+m.save("onibus_mapa.html")
+webbrowser.open("onibus_mapa.html")
+
+print("\nMapa gerado: onibus_mapa.html")
+
+</code></pre>
+<center>
+<iframe width="700" height="350" src="onibus_mapa.html"></iframe>
+</center>
+
+
+
+ ]]></description>
+  <category>python</category>
+  <category>onibus</category>
+  <category>monitoramento</category>
+  <guid>https://your-website-url.example.com/posts/Onibus/</guid>
+  <pubDate>Wed, 05 Nov 2025 03:00:00 GMT</pubDate>
+  <media:content url="https://your-website-url.example.com/posts/Onibus/onibus.jpg" medium="image" type="image/jpeg"/>
+</item>
+</channel>
+</rss>

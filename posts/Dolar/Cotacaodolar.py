@@ -1,0 +1,67 @@
+import requests
+import pandas as pd
+import calendar
+from datetime import datetime
+import plotly.express as px
+import plotly.io as pio
+
+pio.renderers.default = "browser"
+
+
+def cotacao_dolar_mes(mmyyyy: str):
+
+    first_date = datetime.strptime(mmyyyy, "%m%Y")
+    last_day = calendar.monthrange(first_date.year, first_date.month)[1]
+    last_date = first_date.replace(day=last_day)
+
+
+    data_inicial = first_date.strftime("%m-%d-%Y")
+    data_final = last_date.strftime("%m-%d-%Y")
+
+
+    url = (
+        "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
+        f"CotacaoDolarPeriodo(dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?"
+        f"@dataInicial='{data_inicial}'&"
+        f"@dataFinalCotacao='{data_final}'&"
+        "$format=json"
+    )
+
+    resp = requests.get(url)
+    resp.raise_for_status()
+    items = resp.json().get("value", [])
+
+    if len(items) == 0:
+        print("A API não retornou cotações para esse período.")
+        df = pd.DataFrame(columns=["data", "cotacaoVenda"])
+    else:
+        df = pd.DataFrame(items)
+        df["data"] = pd.to_datetime(df["dataHoraCotacao"]).dt.normalize()
+        df = df.groupby("data", as_index=False)["cotacaoVenda"].mean()
+
+    todas_datas = pd.date_range(start=first_date, end=last_date)
+    df_completo = pd.DataFrame({"data": todas_datas})
+
+    
+    df_completo = df_completo.merge(df, on="data", how="left")
+    df_completo["cotacaoVenda"] = df_completo["cotacaoVenda"].ffill().bfill()
+
+    fig = px.line(
+        df_completo,
+        x="data",
+        y="cotacaoVenda",
+        title=f"Cotação do Dólar – {mmyyyy[:2]}/{mmyyyy[2:]}",
+        labels={"data": "Data", "cotacaoVenda": "Cotação (R$)"}
+    )
+
+    fig.write_html("grafico_dolar.html")
+
+    
+    fig.show()
+
+    return df_completo
+
+if __name__ == "__main__":
+    cotacao_dolar_mes("042017")
+
+

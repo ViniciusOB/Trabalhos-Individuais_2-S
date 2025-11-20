@@ -1,0 +1,51 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "TrabalhoBlog",
+    "section": "",
+    "text": "Cotação do Dólar por Período\n\n\n\npython\n\ndolar\n\ncotacao\n\n\n\n\n\n\n\n\n\nNov 5, 2025\n\n\nVinicius\n\n\n\n\n\n\n\n\n\n\n\n\nRegressão linear\n\n\n\npython\n\nmatematica\n\nlinear\n\n\n\n\n\n\n\n\n\nNov 5, 2025\n\n\nVinicius\n\n\n\n\n\n\n\n\n\n\n\n\nMonitoramento de Frota de Ônibus\n\n\n\npython\n\nonibus\n\nmonitoramento\n\n\n\n\n\n\n\n\n\nNov 5, 2025\n\n\nVinicius\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "posts/post-with-code/index.html",
+    "href": "posts/post-with-code/index.html",
+    "title": "Post With Code",
+    "section": "",
+    "text": "This is a post with executable code."
+  },
+  {
+    "objectID": "posts/welcome/index.html",
+    "href": "posts/welcome/index.html",
+    "title": "Welcome To My Blog",
+    "section": "",
+    "text": "This is the first post in a Quarto blog. Welcome!\n\nSince this post doesn’t specify an explicit image, the first image in the post will be used in the listing page of posts."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this blog"
+  },
+  {
+    "objectID": "posts/Regressao/index.html",
+    "href": "posts/Regressao/index.html",
+    "title": "Regressão linear",
+    "section": "",
+    "text": "Exercício foi realizada uma regressão linear utilizando álgebra linear pura, sem depender de bibliotecas automáticas de machine learning. Foram fornecidos dois arquivos contendo anos de estudo (X) e salário (y), e o objetivo era estimar a relação entre essas variáveis por meio do modelo\nimport numpy as np\nimport pandas as pd\nfrom plotnine import ggplot, aes, geom_point, geom_abline, ggsave\n\narquivo = open(\"X.txt\", \"r\")\ntexto_X = []\nwhile True:\n    linha = arquivo.readline()\n    if not linha:\n        break\n    texto_X.append(linha.rstrip(\"\\n\"))\narquivo.close()\n\narquivo = open(\"y.txt\", \"r\")\ntexto_y = []\nwhile True:\n    linha = arquivo.readline()\n    if not linha:\n        break\n    texto_y.append(linha.rstrip(\"\\n\"))\narquivo.close()\n\nX = np.array(list(map(float, texto_X)))\ny = np.array(list(map(float, texto_y)))\n\nX_mat = np.column_stack((np.ones(len(X)), X))\ny_mat = y.reshape(-1, 1)\n\nbeta = np.linalg.inv(X_mat.T @ X_mat) @ (X_mat.T @ y_mat)\n\na = beta[0][0]\nb = beta[1][0]\n\ndf = pd.DataFrame({\"x\": X, \"y\": y})\n\nplot = (\n    ggplot(df, aes(\"x\", \"y\"))\n    + geom_point()\n    + geom_abline(intercept=a, slope=b)\n)\n\nggsave(plot, \"grafico.png\", dpi=300)\n\nprint(a, b)\n\n\n\n\ngrafico da regressão"
+  },
+  {
+    "objectID": "posts/Dolar/index.html",
+    "href": "posts/Dolar/index.html",
+    "title": "Cotação do Dólar por Período",
+    "section": "",
+    "text": "O primeiro exercício trabalha entradas de dados e operações matemáticas básicas. O programa pede ao usuário o preço do dólar no dia e, em seguida, converte um valor em reais para dólares. É um ótimo exemplo prático de como utilizar variáveis, leitura de dados e cálculos simples no Python.\nimport requests\nimport pandas as pd\nimport calendar\nfrom datetime import datetime\nimport plotly.express as px\nimport plotly.io as pio\n\npio.renderers.default = \"browser\"\n\n\ndef cotacao_dolar_mes(mmyyyy: str):\n\n    first_date = datetime.strptime(mmyyyy, \"%m%Y\")\n    last_day = calendar.monthrange(first_date.year, first_date.month)[1]\n    last_date = first_date.replace(day=last_day)\n\n\n    data_inicial = first_date.strftime(\"%m-%d-%Y\")\n    data_final = last_date.strftime(\"%m-%d-%Y\")\n\n\n    url = (\n        \"https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/\"\n        f\"CotacaoDolarPeriodo(dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?\"\n        f\"@dataInicial='{data_inicial}'&\"\n        f\"@dataFinalCotacao='{data_final}'&\"\n        \"$format=json\"\n    )\n\n    resp = requests.get(url)\n    resp.raise_for_status()\n    items = resp.json().get(\"value\", [])\n\n    if len(items) == 0:\n        print(\"A API não retornou cotações para esse período.\")\n        df = pd.DataFrame(columns=[\"data\", \"cotacaoVenda\"])\n    else:\n        df = pd.DataFrame(items)\n        df[\"data\"] = pd.to_datetime(df[\"dataHoraCotacao\"]).dt.normalize()\n        df = df.groupby(\"data\", as_index=False)[\"cotacaoVenda\"].mean()\n\n    todas_datas = pd.date_range(start=first_date, end=last_date)\n    df_completo = pd.DataFrame({\"data\": todas_datas})\n\n    \n    df_completo = df_completo.merge(df, on=\"data\", how=\"left\")\n    df_completo[\"cotacaoVenda\"] = df_completo[\"cotacaoVenda\"].ffill().bfill()\n\n    fig = px.line(\n        df_completo,\n        x=\"data\",\n        y=\"cotacaoVenda\",\n        title=f\"Cotação do Dólar – {mmyyyy[:2]}/{mmyyyy[2:]}\",\n        labels={\"data\": \"Data\", \"cotacaoVenda\": \"Cotação (R$)\"}\n    )\n\n    fig.write_html(\"grafico_dolar.html\")\n\n    \n    fig.show()\n\n    return df_completo\n\nif __name__ == \"__main__\":\n    cotacao_dolar_mes(\"042017\")"
+  },
+  {
+    "objectID": "posts/Onibus/index.html",
+    "href": "posts/Onibus/index.html",
+    "title": "Monitoramento de Frota de Ônibus",
+    "section": "",
+    "text": "No primeiro exercício foi desenvolvida uma aplicação em Python que se conecta à API Olho Vivo, da SPTrans, para obter informações em tempo real sobre uma linha de ônibus específica. O programa realiza etapas fundamentais de interação com APIs:\nAutenticação com token fornecido pela SPTrans.\nBusca da linha informada pelo usuário.\nColeta do itinerário, das paradas e da posição atual dos veículos.\nExibição dos dados em um mapa, usando a biblioteca Folium, que permite representar trajetos, paradas e ônibus em tempo real.\nimport os\nimport requests\nfrom dotenv import load_dotenv\nimport folium\nimport webbrowser\n\nload_dotenv(\".env\")\nTOKEN = os.getenv(\"ONIBUS_TOKEN\")\nAPI = \"http://api.olhovivo.sptrans.com.br/v2.1\"\n\nlinha_usuario = \"2506\"\n\ns = requests.Session()\nres = s.post(f\"{API}/Login/Autenticar?token={TOKEN}\")\nprint(\"Autenticação:\", res.text)\n\ndef buscar_codigos(entrada):\n    termo = entrada.split(\"-\")[0]\n    r = s.get(f\"{API}/Linha/Buscar?termosBusca={termo}\")\n    dados = r.json()\n    print(\"\\nLinhas encontradas:\")\n    for d in dados:\n        print(d)\n    return [d[\"cl\"] for d in dados]\n\ndef buscar_itinerario(cod):\n    r = s.get(f\"{API}/Itinerario?codigoLinha={cod}\")\n    data = r.json()\n    traj = [[v[\"py\"], v[\"px\"]] for k, v in data.items() if k.isdigit()]\n    par = [{\"nome\": v[\"np\"], \"lat\": v[\"py\"], \"lng\": v[\"px\"]} for k, v in data.items() if k.startswith(\"p\")]\n    return traj, par\n\ndef buscar_posicao(cod):\n    r = s.get(f\"{API}/Posicao/Linha?codigoLinha={cod}\")\n    return r.json().get(\"vs\", [])\n\ntodos_codigos = buscar_codigos(linha_usuario)\n\nmelhor_trajeto = None\nmelhor_paradas = None\ncodigo_escolhido = None\n\nprint(\"\\nTestando códigos...\\n\")\n\nfor cod in todos_codigos:\n    traj, par = buscar_itinerario(cod)\n    print(f\"Código {cod} → Pontos: {len(traj)} / Paradas: {len(par)}\")\n    if len(traj) &gt; 0:\n        melhor_trajeto = traj\n        melhor_paradas = par\n        codigo_escolhido = cod\n        break\n\nif melhor_trajeto is None:\n    print(\"\\nNenhum itinerário com trajeto. Testando paradas.\\n\")\n    for cod in todos_codigos:\n        r = s.get(f\"{API}/Parada/BuscarParadasPorLinha?codigoLinha={cod}\")\n        par = r.json()\n        if len(par) &gt; 0:\n            melhor_paradas = [{\"nome\": p[\"np\"], \"lat\": p[\"py\"], \"lng\": p[\"px\"]} for p in par]\n            melhor_trajeto = []\n            codigo_escolhido = cod\n            print(f\"Usando paradas do código {cod}\")\n            break\n\nif melhor_paradas is None and melhor_trajeto is None:\n    raise Exception(\"API sem dados para essa linha.\")\n\nveiculos = buscar_posicao(codigo_escolhido)\nprint(f\"\\nVeículos encontrados: {len(veiculos)}\")\n\nif melhor_trajeto:\n    lat0, lng0 = melhor_trajeto[0]\nelse:\n    lat0, lng0 = melhor_paradas[0][\"lat\"], melhor_paradas[0][\"lng\"]\n\nm = folium.Map(location=[lat0, lng0], zoom_start=13)\n\nif melhor_trajeto:\n    folium.PolyLine(melhor_trajeto, weight=4, color=\"blue\").add_to(m)\n\nfor p in melhor_paradas:\n    folium.Marker(\n        [p[\"lat\"], p[\"lng\"]],\n        popup=p[\"nome\"],\n        icon=folium.Icon(color=\"green\")\n    ).add_to(m)\n\nfor v in veiculos:\n    folium.Marker(\n        [v[\"py\"], v[\"px\"]],\n        popup=f\"Prefixo: {v['p']}\",\n        icon=folium.Icon(color=\"red\")\n    ).add_to(m)\n\nm.save(\"onibus_mapa.html\")\nwebbrowser.open(\"onibus_mapa.html\")\n\nprint(\"\\nMapa gerado: onibus_mapa.html\")"
+  }
+]
